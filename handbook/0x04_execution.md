@@ -44,7 +44,7 @@ Let's see how target execution can look like in an Avatar² script:
 
 ```python
 # Get a target which we initialized before
-qemu = avatar.targets['qemu1']
+qemu = avatar.targets['QemuTarget0']
 
 # Set a breakpoint
 bkpt = qemu.set_breakpoint(0x800e34)
@@ -64,7 +64,20 @@ qemu.step()
 
 ## Controlling the Target Registers
 
-Avatar can  inspect and modify the register state of a target in a very easy manner:
+Avatar can inspect and modify the register state of a target in a very easy
+manner:
+
+```python
+
+# Get the content of a register
+r0 = qemu.regs.r0
+
+# Set the content of a register
+qemu.regs.r0 = 0x41414141
+```
+
+Under the hood, this will call the functions `read_register` and
+`write_register`, which of course can also be just directly called.
 
 ```python
 
@@ -116,13 +129,13 @@ openocd_conf = 'nucleo-l152re.cfg'
 avatar = Avatar(output_directory='/tmp/myavatar')
 
 # Add first target
-qemu = avatar.add_target("qemu", QemuTarget, 
+qemu = avatar.add_target(QemuTarget, 
                           gdb_executable="arm-none-eabi-gdb",
-                          firmware=sample, cpu_model="cortex-m3"
+                          firmware=sample, cpu_model="cortex-m3",
                           executable="targets/qemu/arm-softmmu/qemu-system-")
 
 # Add the second target
-nucleo = avatar.add_target("nucleo", OpenOCDTarget, 
+nucleo = avatar.add_target(OpenOCDTarget,
                            gdb_executable="arm-none-eabi-gdb", 
                            openocd_script=openocd_conf)
 
@@ -131,10 +144,10 @@ qemu.gdb_port = 1234
 nucleo.gdb_port = 1235
 
 # Specify first memory range
-rom  = avatar.add_memory_range(0x08000000, 0x1000000, 'rom', 
+rom  = avatar.add_memory_range(0x08000000, 0x1000000, name='rom', 
                                    file=sample)
 # Specify second memory range
-ram  = avatar.add_memory_range(0x20000000, 0x14000, 'ram')
+ram  = avatar.add_memory_range(0x20000000, 0x14000, name='ram')
 
 # Initialize Targets
 avatar.init_targets()
@@ -145,7 +158,7 @@ nucleo.cont()
 nucleo.wait()
 
 # Transfer the state over to qemu
-avatar.transfer_state(nucleo, qemu, synch_regs=True, synched_ranges=[ram])
+avatar.transfer_state(nucleo, qemu, sync_regs=True, synced_ranges=[ram])
 
 # Continue execution on qemu
 qemu.cont()

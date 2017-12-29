@@ -1,7 +1,11 @@
-from capstone import CS_ARCH_X86, CS_MODE_32
+from capstone import *
 
-class X86(object):
+from .architecture import Architecture
+
+
+class X86(Architecture):
     qemu_name = 'i386'
+    gdb_name = 'i386'
     registers = {'eax': 0,
                  'ecx': 1,
                  'edx': 2,
@@ -18,14 +22,15 @@ class X86(object):
                  'es': 13,
                  'fs': 14,
                  'gs': 15, }
+    sr_name = 'eflags'
     unemulated_instructions = []
     capstone_arch = CS_ARCH_X86
     capstone_mode = CS_MODE_32
 
 
-
-class X86_64(object):
+class X86_64(Architecture):
     qemu_name = 'x86_64'
+    gdb_name = 'i386:x86-64'
     registers = {'rax': 0,
                  'rbx': 1,
                  'rcx': 2,
@@ -45,11 +50,11 @@ class X86_64(object):
                  'rip': 16,
                  'pc': 16,
                  'eflags': 17,
-                 'cs' : 18,
-                 'ss' : 19,
-                 'ds' : 20,
-                 'es' : 21,
-                 'fs' : 22,
-                 'gs' : 23,
-                }
+                 'cs': 18,
+                 'ss': 19,
+                 'ds': 20,
+                 'es': 21,
+                 'fs': 22,
+                 'gs': 23,
+                 }
     unemulated_instructions = []

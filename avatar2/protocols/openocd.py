@@ -1,17 +1,17 @@
 import sys
+import subprocess
+import telnetlib
+import logging
+import distutils
+
+from os.path import abspath
 if sys.version_info < (3, 0):
     import Queue as queue
 else:
     import queue
 
-import subprocess
-import telnetlib
-import logging
-
-
-
-
 END_OF_MSG = b'\r\n\r>'
+
 
 class OpenOCDProtocol(object):
     """
@@ -28,10 +28,10 @@ class OpenOCDProtocol(object):
     :param telnet_port:        the port used for the telnet connection
     :param gdb_port:           the port used for openocds gdb-server
     """
-    
-    def __init__(self, openocd_script, openocd_executable="openocd", 
-                 additional_args=[], telnet_port=4444, gdb_port=3333, 
-                 origin=None, output_directory='/tmp'):    
+
+    def __init__(self, openocd_script, openocd_executable="openocd",
+                 additional_args=[], telnet_port=4444, gdb_port=3333,
+                 origin=None, output_directory='/tmp'):
         if isinstance(openocd_script, str):
             self.openocd_files = [openocd_script]
         elif isinstance(openocd_script, list):
@@ -41,25 +41,27 @@ class OpenOCDProtocol(object):
 
         self._telnet = None
         self._telnet_port = telnet_port
-        self._cmd_line = openocd_executable \
-                        + ''.join([' -f %s '% f for f in self.openocd_files]) \
-                        + '--command "telnet_port %d" ' % telnet_port \
-                        + '--command "gdb_port %d" ' % gdb_port \
-                        + ''.join(additional_args)
         
+        executable_path = distutils.spawn.find_executable(openocd_executable)
+
+        self._cmd_line = [executable_path ,
+                          '--command', 'telnet_port %d' % telnet_port,
+                          '--command', 'gdb_port %d' % gdb_port]
+        self._cmd_line += additional_args
+        self._cmd_line += [e for l
+                           in [['-f', abspath(f)] for f in self.openocd_files]
+                           for e in l]
+
         self._openocd = None
 
-        with open("%s/openocd_out.txt" % output_directory,"wb") as out, \
-             open("%s/openocd_err.txt" % output_directory,"wb") as err:
-            self._openocd = subprocess.Popen(self._cmd_line, 
-                                             stdout=out, stderr=err, shell=True)
-        self.log = logging.getLogger('%s.%s' % 
+        with open("%s/openocd_out.txt" % output_directory, "wb") as out, \
+                open("%s/openocd_err.txt" % output_directory, "wb") as err:
+            self._openocd = subprocess.Popen(self._cmd_line,
+                                             stdout=out, stderr=err)#, shell=True)
+        self.log = logging.getLogger('%s.%s' %
                                      (origin.log.name, self.__class__.__name__)
-                                    ) if origin else \
-                                     logging.getLogger(self.__class__.__name__)
-
-    def __del__(self):
-        self.shutdown()
+                                     ) if origin else \
+            logging.getLogger(self.__class__.__name__)
 
     def connect(self):
         """
@@ -94,16 +96,7 @@ class OpenOCDProtocol(object):
         returns: True on success, else False
         """
         if self._telnet:
-            self._telnet.write('shutdown\n'.encode('ascii'))
-            resp = self._telnet.read_all()
-            if 'shutdown command invoked' in str(resp):
-                return True
-            else:
-                self.log.error('Failed to shutdown the target with OpenOCD')
-                return False
+            self._telnet.close()
         if self._openocd is not None:
-            self._openocd.kill()
+            self._openocd.terminate()
             self._openocd = None
-
-    
-
